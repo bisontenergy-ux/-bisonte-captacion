@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Repsol · Análisis Energético Gratuito</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --navy:        #1D2C4D;
+    --navy-light:  rgba(29,44,77,0.07);
+    --orange:      #FF6B00;
+    --orange-light:rgba(255,107,0,0.09);
+    --red:         #E9153E;
+    --yellow:      #FFCC03;
+    --text:        #111827;
+    --text-muted:  #4B5563;
+    --text-hint:   #9CA3AF;
+    --border:      #E5E7EB;
+    --border-focus:#FF6B00;
+    --bg:          #FFFFFF;
+    --surface:     #FFFFFF;
+    --surface2:    #F9FAFB;
+    --radius:      14px;
+    --radius-sm:   10px;
+  }
+  html, body { min-height:100%; font-family:'Outfit',sans-serif; background:#FFFFFF; color:var(--text); overflow-x:hidden; }
+  .app { min-height:100vh; display:flex; flex-direction:column; max-width:430px; margin:0 auto; background:#FFFFFF; }
+
+  /* ── HEADER ── */
+  .header {
+    background: #FFFFFF;
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo-wrap { display:flex; align-items:center; gap:10px; }
+  .logo-svg { width:44px; height:44px; }
+  .logo-name { font-size:22px; font-weight:700; color:var(--navy); letter-spacing:-0.5px; }
+  .station-pill {
+    background: var(--navy-light);
+    color: var(--navy);
+    font-size:11px; font-weight:600;
+    padding:5px 11px; border-radius:20px;
+    white-space:nowrap;
+  }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { padding:16px 20px 0; background:#FFFFFF; }
+  .progress-track { display:flex; align-items:center; }
+  .p-node { display:flex; flex-direction:column; align-items:center; }
+  .p-dot {
+    width:30px; height:30px; border-radius:50%;
+    background:#F3F4F6; border:2px solid #E5E7EB;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; color:var(--text-muted);
+    transition:all 0.3s;
+  }
+  .p-dot.active { background:var(--orange); border-color:var(--orange); color:white; }
+  .p-dot.done   { background:var(--navy); border-color:var(--navy); color:white; font-size:14px; }
+  .p-dot.done span { display:none; }
+  .p-dot.done::after { content:'✓'; }
+  .p-lbl { font-size:10px; font-weight:600; color:var(--text-hint); margin-top:5px; text-align:center; letter-spacing:0.02em; white-space:nowrap; }
+  .p-lbl.active { color:var(--orange); }
+  .p-line { flex:1; height:2px; background:#E5E7EB; margin:0 4px; margin-bottom:20px; transition:background 0.3s; }
+  .p-line.done { background:var(--navy); }
+
+  /* ── SCREENS ── */
+  .screens { flex:1; padding:20px 20px 32px; }
+  .screen { display:none; animation:fadeUp 0.25s ease; }
+  .screen.visible { display:block; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+  .screen-title { font-size:22px; font-weight:700; line-height:1.25; margin-bottom:4px; color:var(--text); }
+  .screen-sub   { font-size:14px; color:var(--text-muted); line-height:1.55; margin-bottom:22px; }
+
+  /* Value strip */
+  .value-strip {
+    background: var(--navy);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    margin-bottom: 22px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .vs-icon { font-size:26px; flex-shrink:0; }
+  .vs-text strong { display:block; font-size:14px; font-weight:700; color:white; margin-bottom:2px; }
+  .vs-text span   { font-size:13px; color:rgba(255,255,255,0.6); line-height:1.4; }
+
+  /* Form */
+  .form-row   { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .form-group { margin-bottom:14px; }
+  .form-group label {
+    display:block; font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--text-muted); margin-bottom:7px;
+  }
+  .form-group input {
+    width:100%; padding:13px 14px;
+    border:1.5px solid var(--border);
+    border-radius:var(--radius-sm);
+    background:#FFFFFF;
+    font-family:'Outfit',sans-serif; font-size:16px; color:var(--text);
+    outline:none; transition:border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance:none;
+  }
+  .form-group input:focus { border-color:var(--border-focus); box-shadow:0 0 0 3px var(--orange-light); }
+  .form-group input::placeholder { color:var(--text-hint); }
+
+  /* Chips */
+  .chip-section { margin-bottom:20px; }
+  .chip-lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:10px; }
+  .chip-group { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip {
+    padding:9px 16px; border:1.5px solid var(--border);
+    border-radius:30px; font-size:14px; font-weight:500;
+    font-family:'Outfit',sans-serif; background:#FFFFFF;
+    color:var(--text-muted); cursor:pointer; transition:all 0.2s;
+  }
+  .chip.selected { background:var(--orange-light); border-color:var(--orange); color:var(--orange); font-weight:700; }
+
+  /* Consent */
+  .consent-box {
+    background:#F9FAFB; border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:14px 16px; margin-bottom:16px;
+  }
+  .consent-box p { font-size:13px; color:var(--text-muted); line-height:1.7; }
+  .consent-box strong { color:var(--text); font-weight:600; }
+  .consent-box a { color:var(--orange); text-decoration:underline; }
+
+  .checks-box {
+    background:#FFFFFF; border:1.5px solid var(--border);
+    border-radius:var(--radius-sm); padding:4px 16px; margin-bottom:20px;
+  }
+  .check-row { display:flex; align-items:flex-start; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+  .check-row:last-child { border-bottom:none; }
+  .check-row input[type=checkbox] { width:20px; height:20px; flex-shrink:0; margin-top:2px; accent-color:var(--orange); cursor:pointer; }
+  .check-label { font-size:13px; color:var(--text-muted); line-height:1.6; }
+  .check-label strong { color:var(--text); font-weight:600; }
+  .opt-tag {
+    display:inline-block; font-size:10px; font-weight:700;
+    background:rgba(255,107,0,0.09); color:var(--orange);
+    padding:1px 7px; border-radius:10px; margin-left:5px;
+    vertical-align:middle; text-transform:uppercase; letter-spacing:0.04em;
+  }
+
+  /* Buttons */
+  .btn { width:100%; padding:15px; border:none; border-radius:var(--radius-sm); font-family:'Outfit',sans-serif; font-size:16px; font-weight:700; cursor:pointer; transition:all 0.2s; }
+  .btn-primary { background:var(--orange); color:white; }
+  .btn-primary:not(:disabled):hover  { background:#e55f00; }
+  .btn-primary:not(:disabled):active { background:#cc5500; transform:scale(0.98); }
+  .btn-primary:disabled { background:#E5E7EB; color:#9CA3AF; cursor:not-allowed; }
+  .btn-ghost { background:transparent; color:var(--text-muted); border:1.5px solid var(--border); margin-top:10px; }
+  .btn-ghost:active { background:#F9FAFB; }
+
+  /* ── RESULTADO ── */
+  .result-wrap { padding:8px 0 28px; text-align:center; }
+  .result-card {
+    background:var(--navy); border-radius:18px;
+    padding:32px 24px 28px; margin-bottom:16px;
+    position:relative; overflow:hidden;
+  }
+  .result-card::before {
+    content:''; position:absolute; top:-50px; right:-50px;
+    width:180px; height:180px; border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #FFCC03 0%, #FF6B00 50%, #E9153E 100%);
+    opacity:0.2;
+  }
+  .result-icon { width:76px; height:76px; border-radius:50%; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; font-size:36px; position:relative; z-index:1; background:rgba(255,107,0,0.2); }
+  .result-title { font-size:24px; font-weight:700; color:white; margin-bottom:6px; position:relative; z-index:1; line-height:1.2; }
+  .result-sub   { font-size:14px; color:rgba(255,255,255,0.6); line-height:1.5; position:relative; z-index:1; }
+
+  .info-row { background:#FFFFFF; border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:14px 16px; display:flex; align-items:center; gap:13px; margin-bottom:10px; text-align:left; }
+  .info-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .info-icon.orange { background:var(--orange-light); }
+  .info-icon.navy   { background:var(--navy-light); }
+  .info-text p    { font-size:14px; font-weight:600; color:var(--text); }
+  .info-text span { font-size:13px; color:var(--text-muted); }
+  .ref-line { font-size:11px; color:var(--text-hint); margin-top:20px; font-family:monospace; }
+
+  /* Overlay */
+  .overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.92); z-index:200; align-items:center; justify-content:center; flex-direction:column; gap:14px; }
+  .overlay.show { display:flex; }
+  .spinner { width:40px; height:40px; border:3px solid #E5E7EB; border-top-color:var(--orange); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .overlay p { font-size:14px; font-weight:600; color:var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-wrap">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANwAAABdCAYAAADOtgj8AAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAmR0lEQVR42u2dd5xU1fn/P885t8zszPZdOlJFXLAgFmwM9kSxO9hioibq19Sfad/4TeKyRhPbNyYmphgTjbEy0diDscCgYgkrNkC6gLRdWHZ36r33nPP8/rizFCvfNEy8b16X3X1x5+ydO+dznuc85QJERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERE/KdA/8lvjpkJyAhgAQELGdMzjOnvPqsVAASwkIEZhog4mhYREf8Xoc1IS2bIv02kacncKqK7GBFZuJ0QCyhjCOCKhUuoDT87iGKr91bwJkiNkaSKgDAESIYTB1DfA0HPSUu8gNx/tVP//vm+sYgyOpoiEZHg3iO0VgG0gQgGcBBsuupoS644X3vrJktXDUXSBkwMMNWAtEIPkh2ACZAGEBIoGcBYK5SpzqjeQbfGd7toWTjudI7czIhIcNtZtdASWShv+PbJEiu+acm1hyFWAEoOwDEDUWsg6mBEFbGwISEBSIC572AYEoh7AjEJk6suB7r++7HGb97QtxeMRBfxiRZcGBAhIoLxOm6dQHrmNTatPhbShyl7LFBrtOUKIWNElATLBIhiANmh2CBhhKjcAgKxARlpwNpAlCxUC/g9zq835s+4bOjQQ8oAIxJdxN+L9e/qQhKRAWwur7rwu7L0hytkVYeDvKuNcEGUlCwhBQxIGUAGAHywIIAUCBZAEmQEQBJg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" alt="Repsol" style="height:44px;width:auto;display:block;">
+    </div>
+    <div class="station-pill" id="station-pill">Estación</div>
+  </div>
+
+  <!-- PROGRESO -->
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-track">
+      <div class="p-node"><div class="p-dot active" id="dot1"><span>1</span></div><div class="p-lbl active" id="lbl1">Tus datos</div></div>
+      <div class="p-line" id="line1"></div>
+      <div class="p-node"><div class="p-dot" id="dot2"><span>2</span></div><div class="p-lbl" id="lbl2">Contacto</div></div>
+      <div class="p-line" id="line2"></div>
+      <div class="p-node"><div class="p-dot" id="dot3"><span>3</span></div><div class="p-lbl" id="lbl3">Consentimiento</div></div>
+    </div>
+  </div>
+
+  <div class="screens">
+
+    <!-- PASO 1: DATOS -->
+    <div class="screen visible" id="screen1">
+      <div class="value-strip">
+        <div class="vs-icon">⚡</div>
+        <div class="vs-text">
+          <strong>Análisis de eficiencia energética gratuito</strong>
+          <span>Te llamamos para ayudarte a reducir tu gasto. Sin compromiso.</span>
+        </div>
+      </div>
+
+      <p class="screen-title">¿A quién llamamos?</p>
+      <p class="screen-sub">Rellena tus datos y nos ponemos en contacto contigo.</p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" id="inp-nombre" placeholder="Ana" autocomplete="given-name" oninput="v1()">
+        </div>
+        <div class="form-group">
+          <label>Apellidos</label>
+          <input type="text" id="inp-apellidos" placeholder="García" autocomplete="family-name" oninput="v1()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Teléfono móvil</label>
+        <input type="tel" id="inp-tel" placeholder="600 000 000" inputmode="numeric" maxlength="9" autocomplete="tel" oninput="v1()">
+      </div>
+      <div class="form-group">
+        <label>Email <span style="font-weight:400;text-transform:none;font-size:11px;opacity:0.7">(opcional)</span></label>
+        <input type="email" id="inp-email" placeholder="ana@email.com" inputmode="email" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>DNI <span style="font-weight:400;text-transform:none;font-size:11px;opacity:0.7">(opcional)</span></label>
+        <input type="text" id="inp-dni" placeholder="12345678A" maxlength="9" autocomplete="off" style="text-transform:uppercase;">
+      </div>
+
+      <button class="btn btn-primary" id="btn1" onclick="go(2)" disabled>Siguiente →</button>
+    </div>
+
+    <!-- PASO 2: CONTACTO -->
+    <div class="screen" id="screen2">
+      <p class="screen-title">¿Cómo te contactamos?</p>
+      <p class="screen-sub">Elige el momento y canal que mejor te venga.</p>
+
+      <div class="chip-section">
+        <div class="chip-lbl">¿Cuándo te viene mejor?</div>
+        <div class="chip-group" id="hora-chips">
+          <button class="chip" onclick="sc('hora',this,'Mañana (9–13h)')">☀️ Mañana</button>
+          <button class="chip" onclick="sc('hora',this,'Tarde (15–19h)')">🌤 Tarde</button>
+          <button class="chip" onclick="sc('hora',this,'Sin preferencia')">🕐 Sin preferencia</button>
+        </div>
+      </div>
+
+      <div class="chip-section">
+        <div class="chip-lbl">Canal preferido</div>
+        <div class="chip-group" id="canal-chips">
+          <button class="chip" onclick="sc('canal',this,'Llamada')">📞 Llamada</button>
+          <button class="chip" onclick="sc('canal',this,'WhatsApp')">💬 WhatsApp</button>
+          <button class="chip" onclick="sc('canal',this,'Email')">✉️ Email</button>
+        </div>
+      </div>
+
+      <div class="chip-section">
+        <div class="chip-lbl">¿Tiene la app Waylet?</div>
+        <div class="chip-group" id="waylet-chips">
+          <button class="chip" onclick="sc('waylet',this,'Sí')">✅ Sí, la tengo</button>
+          <button class="chip" onclick="sc('waylet',this,'No')">❌ No la tengo</button>
+          <button class="chip" onclick="sc('waylet',this,'No sé')">🤷 No sé qué es</button>
+        </div>
+      </div>
+
+      <div class="chip-section">
+        <div class="chip-lbl">¿Le interesa la tarjeta Solred?</div>
+        <div class="chip-group" id="solred-chips">
+          <button class="chip" onclick="sc('solred',this,'Sí, quiero información')">⛽ Sí, quiero información</button>
+          <button class="chip" onclick="sc('solred',this,'No')">❌ No me interesa</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn2" onclick="go(3)" disabled>Siguiente →</button>
+      <button class="btn btn-ghost" onclick="go(1)">← Atrás</button>
+    </div>
+
+    <!-- PASO 3: CONSENTIMIENTO -->
+    <div class="screen" id="screen3">
+      <p class="screen-title">Casi listo</p>
+      <p class="screen-sub">Lee y acepta para que podamos contactarte.</p>
+
+      <div class="consent-box">
+        <p>
+          <strong>Responsable:</strong> Bisonte Energy S.L. (CIF B55423578).<br><br>
+          Tus datos se usarán para contactarte y realizarte un análisis de eficiencia energética gratuito, así como para informarte sobre servicios, promociones y comunicaciones comerciales de Bisonte Energy presentes y futuras, incluyendo llamadas telefónicas.<br><br>
+          Puedes ejercer tus derechos de acceso, rectificación y supresión escribiendo a <strong>rgpd@bisonte.es</strong> · <a href="#">Política de privacidad</a>
+        </p>
+      </div>
+
+      <div class="checks-box">
+        <label class="check-row">
+          <input type="checkbox" id="chk1" onchange="v3()">
+          <div class="check-label">
+            Autorizo a <strong>Bisonte Energy S.L.</strong> a contactarme por los medios indicados para realizarme el análisis energético gratuito y para informarme sobre sus servicios y comunicaciones comerciales presentes y futuras, incluyendo llamadas telefónicas.
+          </div>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="chk2" onchange="v3()">
+          <div class="check-label">
+            Consiento que mis datos sean cedidos a <strong>Repsol Comercial de Productos Petrolíferos S.A.</strong> para que pueda contactarme con comunicaciones y servicios relacionados con las estaciones Repsol.
+            <span class="opt-tag">Opcional</span>
+          </div>
+        </label>
+      </div>
+
+      <button class="btn btn-primary" id="btn3" onclick="submitForm()" disabled>Solicitar análisis gratuito ⚡</button>
+      <button class="btn btn-ghost" onclick="go(2)">← Atrás</button>
+    </div>
+
+    <!-- RESULTADO -->
+    <div class="screen" id="screen4">
+      <div class="result-wrap">
+        <div class="result-card">
+          <div class="result-icon">⚡</div>
+          <div class="result-title" id="result-title">¡Solicitud recibida!</div>
+          <div class="result-sub"  id="result-sub">En breve nos pondremos en contacto contigo</div>
+        </div>
+        <div class="info-row">
+          <div class="info-icon orange">📞</div>
+          <div class="info-text">
+            <p id="contact-how">Te contactaremos</p>
+            <span id="contact-when">en el horario que indicaste</span>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-icon navy">📋</div>
+          <div class="info-text">
+            <p>Qué esperar en la llamada</p>
+            <span>Un asesor revisará tu consumo y te presentará las opciones de ahorro disponibles</span>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-icon navy">✅</div>
+          <div class="info-text">
+            <p>Sin compromiso</p>
+            <span>El análisis es gratuito y no implica ninguna contratación</span>
+          </div>
+        </div>
+        <div class="ref-line" id="ref-line"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <p>Guardando tu solicitud…</p>
+</div>
+
+<script>
+const WEBHOOK_URL  = 'https://script.google.com/macros/s/AKfycbwb1PVDUmWqoIwKwTTgRHPznqmaBHP12_km_-gbvA7f7YOp8Oi_ErsVL9feBZJx5dcr9g/exec';
+const usp          = new URLSearchParams(location.search);
+const STATION_ID   = usp.get('estacion') || 'DEMO';
+const STATION_NAME = decodeURIComponent(usp.get('nombre') || STATION_ID);
+g('station-pill').textContent = STATION_NAME;
+
+let hora = null, canal = null, waylet = null, solred = null, step = 1;
+
+function v1() {
+  const n=g('inp-nombre').value.trim(), a=g('inp-apellidos').value.trim();
+  const t=g('inp-tel').value.replace(/\s/g,'');
+  g('btn1').disabled = !(n.length>=2 && a.length>=2 && /^\d{9}$/.test(t));
+}
+function v2() { g('btn2').disabled = !(hora && canal); }
+function v3() { g('btn3').disabled = !g('chk1').checked; }
+
+function sc(group, el, val) {
+  document.querySelectorAll(`#${group}-chips .chip`).forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  if(group==='hora') hora=val; else if(group==='canal') canal=val; else if(group==='waylet') waylet=val; else if(group==='solred') solred=val;
+  v2();
+}
+
+function go(n) {
+  g('screen'+step).classList.remove('visible');
+  step = n;
+  g('screen'+n).classList.add('visible');
+  for(let i=1;i<=3;i++){
+    const d=g('dot'+i), l=g('lbl'+i);
+    d.classList.remove('active','done'); l.classList.remove('active');
+    if(i<n)  d.classList.add('done');
+    if(i===n){ d.classList.add('active'); l.classList.add('active'); }
+    if(i<3)  g('line'+i).classList.toggle('done', i<n);
+  }
+  window.scrollTo(0,0);
+}
+
+async function submitForm() {
+  const nombre    = g('inp-nombre').value.trim();
+  const apellidos = g('inp-apellidos').value.trim();
+  const tel       = g('inp-tel').value.replace(/\s/g,'');
+  const email     = g('inp-email').value.trim();
+  const ref       = 'BST-' + Date.now().toString(36).toUpperCase() + '-' + STATION_ID;
+  const ts        = new Date().toLocaleString('es-ES',{timeZone:'Europe/Madrid'});
+
+  const payload = {
+    timestamp:ts, referencia:ref,
+    estacion:STATION_ID, nombre_estacion:STATION_NAME,
+    nombre, apellidos, telefono:tel, email,
+    hora_preferida:hora, canal_preferido:canal,
+    waylet: waylet || 'No indicado',
+    solred: solred || 'No indicado',
+    dni: g('inp-dni').value.trim().toUpperCase() || '',
+    cesion_repsol: g('chk2').checked ? 'SÍ' : 'NO',
+    ganador: 'N/A'
+  };
+
+  g('overlay').classList.add('show');
+  try {
+    await fetch(WEBHOOK_URL, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+  } catch(_){}
+  g('overlay').classList.remove('show');
+
+  const canalMap = { Llamada:'Te llamaremos por teléfono', WhatsApp:'Te escribiremos por WhatsApp', Email:'Te enviaremos un email' };
+  g('progress-wrap').style.display = 'none';
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('visible'));
+  g('screen4').classList.add('visible');
+  g('result-title').textContent = '¡Gracias, ' + nombre + '!';
+  g('result-sub').textContent   = 'Hemos recibido tu solicitud de análisis energético';
+  g('contact-how').textContent  = canalMap[canal] || 'Te contactaremos';
+  g('contact-when').textContent = hora && hora !== 'Sin preferencia'
+    ? 'por la ' + hora.toLowerCase()
+    : 'en el horario que nos indicaste';
+  g('ref-line').textContent = 'Referencia: ' + ref;
+}
+
+function g(id){ return document.getElementById(id); }
+</script>
+</body>
+</html>
